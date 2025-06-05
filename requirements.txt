@@ -1,4 +1,4 @@
 PySide6>=6.5.0
-python-poppler-qt>=0.24.0
+PyMuPDF>=1.23.0  # Alternative to poppler for PDF rendering
 ebooklib>=0.17.1
 beautifulsoup4>=4.12.0 

@@ -2,7 +2,7 @@
 import sys
 import os
 from pathlib import Path
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QFileDialog, QMessageBox
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QKeyEvent
 
@@ -23,6 +23,9 @@ class ReaderWindow(QMainWindow):
         self.viewer = self._create_viewer(file_path)
         if self.viewer:
             self.setCentralWidget(self.viewer)
+        else:
+            QMessageBox.critical(self, "Unsupported File", f"Cannot open file: {file_path}")
+            self.close()
     
     def _create_viewer(self, file_path: str):
         ext = Path(file_path).suffix.lower()
@@ -36,22 +39,37 @@ class ReaderWindow(QMainWindow):
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.key() == Qt.Key_Space:
-            self.viewer.next_page()
+            if self.viewer:
+                self.viewer.next_page()
         elif event.key() == Qt.Key_Backspace:
-            self.viewer.previous_page()
+            if self.viewer:
+                self.viewer.previous_page()
         super().keyPressEvent(event)
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python main.py <path_to_document>")
-        sys.exit(1)
-    
-    file_path = sys.argv[1]
-    if not os.path.exists(file_path):
-        print(f"Error: File '{file_path}' does not exist")
-        sys.exit(1)
-    
     app = QApplication(sys.argv)
+    file_path = None
+
+    # If a file is provided as an argument, use it
+    if len(sys.argv) == 2:
+        file_path = sys.argv[1]
+        if not os.path.exists(file_path):
+            QMessageBox.critical(None, "File Not Found", f"File not found: {file_path}")
+            sys.exit(1)
+    else:
+        # Show file open dialog
+        file_dialog = QFileDialog()
+        file_dialog.setWindowTitle("Open PDF or ePub File")
+        file_dialog.setNameFilters(["PDF Files (*.pdf)", "ePub Files (*.epub)", "All Files (*.*)"])
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
+        if file_dialog.exec():
+            selected_files = file_dialog.selectedFiles()
+            if selected_files:
+                file_path = selected_files[0]
+        if not file_path:
+            # User cancelled
+            sys.exit(0)
+
     window = ReaderWindow(file_path)
     window.show()
     sys.exit(app.exec())

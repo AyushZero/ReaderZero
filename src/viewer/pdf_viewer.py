@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QImage, QPixmap, QPainter
-import popplerqt5
+import fitz  # PyMuPDF
 from pathlib import Path
 
 class PDFViewer(QWidget):
@@ -23,14 +23,10 @@ class PDFViewer(QWidget):
         self.render_current_page()
     
     def load_document(self, file_path: str):
-        """Load PDF document using Poppler."""
-        self.document = popplerqt5.Poppler.Document.load(file_path)
+        """Load PDF document using PyMuPDF."""
+        self.document = fitz.open(file_path)
         if not self.document:
             raise RuntimeError(f"Failed to load PDF: {file_path}")
-        
-        # Set rendering hints for better quality
-        self.document.setRenderHint(popplerqt5.Poppler.Document.Antialiasing, True)
-        self.document.setRenderHint(popplerqt5.Poppler.Document.TextAntialiasing, True)
     
     def render_current_page(self):
         """Render the current page to fit the window."""
@@ -38,19 +34,21 @@ class PDFViewer(QWidget):
             return
         
         # Get current page
-        page = self.document.page(self.current_page)
+        page = self.document[self.current_page]
         if not page:
             return
         
         # Calculate scale to fit window
-        page_size = page.pageSize()
+        page_rect = page.rect
         window_size = self.size()
-        scale_x = window_size.width() / page_size.width()
-        scale_y = window_size.height() / page_size.height()
+        scale_x = window_size.width() / page_rect.width
+        scale_y = window_size.height() / page_rect.height
         scale = min(scale_x, scale_y)
         
         # Render page
-        self.page_image = page.renderToImage(scale * 72, scale * 72)
+        pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale))
+        img = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format_RGB888)
+        self.page_image = img
         self.update()
     
     def paintEvent(self, event):
@@ -73,7 +71,7 @@ class PDFViewer(QWidget):
     
     def next_page(self):
         """Go to next page."""
-        if self.current_page < self.document.numPages() - 1:
+        if self.current_page < len(self.document) - 1:
             self.current_page += 1
             self.render_current_page()
     
@@ -85,8 +83,8 @@ class PDFViewer(QWidget):
     
     def sizeHint(self):
         """Return preferred size."""
-        if self.document and self.current_page < self.document.numPages():
-            page = self.document.page(self.current_page)
+        if self.document and self.current_page < len(self.document):
+            page = self.document[self.current_page]
             if page:
-                return QSize(page.pageSize().width(), page.pageSize().height())
+                return QSize(page.rect.width, page.rect.height)
         return QSize(800, 600)  # Default size 
