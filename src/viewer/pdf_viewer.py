@@ -9,12 +9,12 @@ class PDFViewer(QWidget):
         super().__init__()
         self.current_page = 0
         self.document = None
-        self.zoom_factor = 1.0
-        self.base_dpi = 150
-
+        self.a4_height = 1080
+        self.a4_width = int(self.a4_height / 1.414)
+        
         # Load document
         self.load_document(file_path)
-
+        
         # Set up layout
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -27,6 +27,9 @@ class PDFViewer(QWidget):
         self.image_label.setAlignment(Qt.AlignCenter)
         self.scroll_area.setWidget(self.image_label)
         self.layout.addWidget(self.scroll_area)
+
+        # Set initial window size to A4 at 1080px height
+        self.resize(self.a4_width, self.a4_height)
 
         # Initial render
         self.render_current_page()
@@ -43,10 +46,9 @@ class PDFViewer(QWidget):
         page = self.document[self.current_page]
         if not page:
             return
-        # Render at fixed DPI * zoom
-        dpi = self.base_dpi * self.zoom_factor
-        zoom = dpi / 72  # 72 points per inch is PDF default
-        matrix = fitz.Matrix(zoom, zoom)
+        # Render so that height is always 1080px, width is A4 aspect
+        scale = self.a4_height / page.rect.height
+        matrix = fitz.Matrix(scale, scale)
         pix = page.get_pixmap(matrix=matrix, alpha=False)
         img = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format_RGB888)
         self.image_label.setPixmap(QPixmap.fromImage(img))
@@ -60,13 +62,7 @@ class PDFViewer(QWidget):
         pass  # No custom painting needed
 
     def sizeHint(self):
-        if self.document and self.current_page < len(self.document):
-            page = self.document[self.current_page]
-            if page:
-                width = int(page.rect.width * self.base_dpi / 72)
-                height = int(page.rect.height * self.base_dpi / 72)
-                return QSize(width, height)
-        return QSize(800, 600)
+        return QSize(self.a4_width, self.a4_height)
 
     def minimumSizeHint(self):
         return QSize(400, 300)
