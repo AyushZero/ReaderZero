@@ -12,8 +12,8 @@ from viewer.epub_viewer import EpubViewer
 class ReaderWindow(QMainWindow):
     def __init__(self, file_path: str):
         super().__init__()
-        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
-        self.showFullScreen()
+        # Remove forced full-screen and frameless window
+        self.setWindowTitle("Reader")
         
         # Create central widget
         self.central_widget = QWidget()
@@ -38,12 +38,21 @@ class ReaderWindow(QMainWindow):
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key_Escape:
             self.close()
-        elif event.key() == Qt.Key_Space:
+        elif event.key() == Qt.Key_Space or event.key() == Qt.Key_Right:
             if self.viewer:
                 self.viewer.next_page()
-        elif event.key() == Qt.Key_Backspace:
+        elif event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Left:
             if self.viewer:
                 self.viewer.previous_page()
+        elif event.key() == Qt.Key_Plus or event.key() == Qt.Key_Equal:
+            if isinstance(self.viewer, PDFViewer):
+                self.viewer.zoom_in()
+        elif event.key() == Qt.Key_Minus:
+            if isinstance(self.viewer, PDFViewer):
+                self.viewer.zoom_out()
+        elif event.key() == Qt.Key_0:
+            if isinstance(self.viewer, PDFViewer):
+                self.viewer.reset_zoom()
         super().keyPressEvent(event)
 
 def main():
